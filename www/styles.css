@@ -55,11 +55,12 @@ img { display: block; }
 .gp-card.foc { box-shadow: inset 0 0 0 1.5px rgba(238,240,252,.5); }
 .gp-top { padding: 14px 18px 0; }
 .gp-now { display: flex; align-items: center; min-height: 32px; }
-.gp-namebtn { display: flex; align-items: center; gap: 8px; min-height: 44px; text-align: start; min-width: 0; }
-.gp-namebtn .n { font-size: 17px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+/* name above, "when" below: the long "יום שלישי · 07:00 · מה שהיה" must never squeeze the place name */
+.gp-namebtn { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 44px; text-align: start; min-width: 0; flex: 1 1 auto; }
+.gp-namebtn .n { font-size: 17px; line-height: 22px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
 .gp-namebtn .n span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gp-namebtn .pin { width: 15px; height: 15px; }
-.gp-namebtn .w { font-size: 14px; color: var(--tx2); white-space: nowrap; }
+.gp-namebtn .w { font-size: 14px; line-height: 18px; color: var(--tx2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gp-more { font-size: 14px; color: var(--link); min-height: 44px; padding: 0 2px; display: inline-flex; align-items: center; gap: 2px; flex: none; margin-inline-start: auto; }
 .gp-more .ic { width: 14px; height: 14px; transform: rotate(90deg); }
 /* drag handle: the only place a drag can start, so scrolling the list and the strips is untouched */
@@ -67,7 +68,7 @@ img { display: block; }
 .gp-grip .ic { width: 20px; height: 20px; pointer-events: none; }
 .gp-card.shifting { transition: transform .18s ease-out; }
 .gp-card.dragging { z-index: 6; cursor: grabbing; box-shadow: 0 14px 32px rgba(0,0,0,.55); transition: box-shadow .15s; }
-.gp-hero { display: flex; justify-content: space-between; align-items: flex-start; margin-top: -4px; }
+.gp-hero { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 0; }
 .gp-main { display: flex; align-items: center; gap: 4px; }
 .gp-temp { font-size: 46px; line-height: 52px; font-weight: 400; letter-spacing: -1px; }
 .gp-ic { width: 44px; height: 44px; flex: none; }

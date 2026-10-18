@@ -3,6 +3,12 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v5 — 2026-10-18
+
+- **Fix: the place name was cut off** ("בני…", "מו…"). The name shared one line with "יום שלישי · 07:00 · מה שהיה" (or
+  "עכשיו") and the drag handle added in v3 left it even less room. The name now has its own line at full width, and the
+  day/hour label sits right under it.
+
 ## v4 — 2026-10-18
 
 - **No Israeli place goes missing in the "+" search.** The search used to rely on Open-Meteo's geocoder alone, which holds
