@@ -18,7 +18,7 @@ function write(key, value) {
   }
 }
 
-export const DEFAULT_SETTINGS = { temp: 'c', wind: 'kmh', pastDays: 7, calm: false, showGps: true };
+export const DEFAULT_SETTINGS = { temp: 'c', wind: 'kmh', pastDays: 7, showGps: true };
 
 export const loadPlaces = () => read(K.places, []);
 export const savePlaces = (v) => write(K.places, v);

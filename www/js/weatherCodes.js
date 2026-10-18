@@ -43,3 +43,11 @@ export function windFrom(deg) {
   const names = ['צפונית', 'צפון-מזרחית', 'מזרחית', 'דרום-מזרחית', 'דרומית', 'דרום-מערבית', 'מערבית', 'צפון-מערבית'];
   return names[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 }
+
+// ---------- glossy icons and scenic banners (icons/g-*.svg, icons/b-*.svg) ----------
+const GLOSSY = { sun: 'g-sun', moon: 'g-moon', cloud: 'g-cloud', 'cloud-sun': 'g-cloud-sun', 'cloud-moon': 'g-cloud-moon', drizzle: 'g-rain', rain: 'g-rain', storm: 'g-storm', snow: 'g-snow', fog: 'g-fog' };
+const BANNERS = ['sun', 'night', 'cloud', 'rain', 'storm', 'fog', 'snow'];
+export const glossy = (name) => `icons/${GLOSSY[name] || 'g-cloud'}.svg`;
+export const bannerOf = (scene) => `icons/b-${BANNERS.includes(scene) ? scene : 'cloud'}.svg`;
+/** Dry cloud with a real chance of rain: Google shows the dark cloud with a single drop. */
+export const isCloudIcon = (name) => name === 'cloud' || name === 'cloud-sun' || name === 'cloud-moon';

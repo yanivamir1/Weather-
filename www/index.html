@@ -4,25 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#0A0A0B">
+<meta name="theme-color" content="#232429">
 <title>מזג אוויר</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="app">
-  <div class="wx-bg" id="bg" aria-hidden="true">
-    <div class="fx fx-sun"></div>
-    <div class="fx fx-night"><div class="stars"></div></div>
-    <div class="fx fx-cloud"><div class="mist m1"></div><div class="mist m2"></div></div>
-    <div class="fx fx-rain"><div class="rain r1"></div><div class="rain r2"></div></div>
-    <div class="fx fx-storm"><div class="rain r1"></div><div class="rain r2"></div><div class="flash"></div></div>
-    <div class="fx fx-fog"><div class="mist m1"></div><div class="mist m2"></div></div>
-    <div class="fx fx-snow"><div class="snow s1"></div><div class="snow s2"></div></div>
-    <div class="vignette"></div>
-  </div>
-  <header class="top" id="top"></header>
-  <main class="list" id="list"></main>
-  <button class="fab" id="fab" aria-label="הוסף מקום"><img src="icons/plus.svg" width="24" height="24" alt=""></button>
+  <main class="gp-scroll" id="list"></main>
+  <button class="gp-fab" id="fab" data-act="add" aria-label="הוספת מקום"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
 </div>
 <div id="sheet-root"></div>
 <div id="toast-root" aria-live="polite"></div>

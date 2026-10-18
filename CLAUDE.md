@@ -69,9 +69,11 @@ a version number anonymously). Same here: deliver each build directly when he as
   there is no bundler.
 - `android/keystore/debug.keystore` is committed on purpose so every CI build shares one signature —
   never regenerate or remove it; that would break in-place updates and Android's Auto Backup restore.
-- Fonts are bundled in `www/fonts` (Heebo for Hebrew/Latin, Space Grotesk for numbers); nothing is
-  loaded from a CDN at runtime.
-- Follow `anthropic-skills:design-inspiration` for anything visual — re-check it before any design
-  change, since Yaniv updates his taste there over time. Dark only; muted glow; ghost pills; one cream
-  action; monochrome icons.
+- **Design: copy Google's weather card, on purpose.** Yaniv looked at several options, then sent a screenshot of
+  Google's weather card and asked for that look ("copy Google's design", and not to use the design-inspiration
+  skill for it); he picked the "all places" variant. So this app does **not** follow his usual taste library
+  (near-black, muted glow, ghost pills, monochrome icons): it uses Google's dark palette (page `#232429`, card
+  `#2d2e33`, tile `#35383f`, text `#e9e9eb` / `#c0bfc4` / `#9f9fa1`, blue `#aec6f6`), glossy colour icons and
+  scenic banners (`www/icons/g-*.svg`, `b-*.svg`). Keep that look unless he asks for something else.
+- Fonts: Google Sans Flex (Latin, open source) and Heebo (Hebrew), bundled in `www/fonts`; nothing loads from a CDN.
 - UI text is Hebrew, right-to-left. Numbers and chart time stay in `.num` (LTR) spans.

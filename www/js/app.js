@@ -1,23 +1,21 @@
-// Weather app (design option 5 "Ribbon"): one row per place on a shared 24-hour axis, a day picker that
-// reaches back into the past ("what was", to tell whether it rained) and a background that follows the weather.
+// Weather app: one Google-weather-style card per place, a shared hour axis (the strips scroll together),
+// day tiles that reach back into the past ("what was", to tell whether it rained) and a detail sheet per place.
 import { APP_VERSION } from './version.js';
 import { fetchAirQuality, fetchForecasts, reverseGeocode } from './api.js';
-import { at, nowDate, nowHour, pastDaysAvailable, rainSentence, summary } from './forecast.js';
-import { axisHtml, ribbonRow } from './ribbonRow.js';
-import { daySelectorHtml } from './daySelector.js';
+import { nowDate, nowHour, pastDaysAvailable } from './forecast.js';
+import { placeCard } from './placeCard.js';
+import { dayTilesHtml } from './daySelector.js';
 import { detailHtml, fillAqi } from './detailSheet.js';
 import { openAddSheet } from './addSheet.js';
 import { openSettings } from './settingsSheet.js';
-import { setCalm, setScene } from './scene.js';
 import { $, clearToast, closeSheet, esc, icon, isSheetOpen, openSheet, sheetEl, toast } from './dom.js';
-import { WEEKDAY_FULL, addDays, ago, hh, monthName, parseDay } from './i18n.js';
+import { ago } from './i18n.js';
 import { distanceKm, getPosition } from './geo.js';
-import { fmtTemp, mmSentence, setUnits, windNum, windUnit } from './units.js';
+import { setUnits } from './units.js';
 import { loadCache, loadGps, loadPlaces, loadSettings, saveCache, saveGps, savePlaces, saveSettings } from './storage.js';
 
 const CACHE_TTL = 15 * 60 * 1000;
 const AUTO_REFRESH = 30 * 60 * 1000;
-const METRICS = [['temp', 'טמפרטורה'], ['rain', 'גשם'], ['wind', 'רוח'], ['uv', 'UV']];
 
 const state = {
   settings: loadSettings(),
@@ -27,12 +25,14 @@ const state = {
   fetchedAt: 0,
   loading: false,
   failed: false,
-  day: 0,
+  day: 0,          // the day the hourly strips are showing (0 = today, negative = the past)
+  hourDay: 0,      // the day of the selected hour (differs from `day` when a strip spilled into the next day)
   hour: new Date().getHours(),
   hourFromData: false,
-  metric: 'temp',
   focusKey: null,
-  resetDays: true,
+  resetDays: true,  // scroll the day tiles so that today is the first tile
+  revealDay: false, // scroll the selected day tile into view after a tap on it
+  resetStrip: true, // put the strips back at their first column
   sheetKey: null,
 };
 let inflight = null;
@@ -59,6 +59,15 @@ function loadFromCache() {
   }
 }
 
+function resetToNow() {
+  const ref = anyData();
+  state.day = 0;
+  state.hourDay = 0;
+  state.hour = ref ? nowHour(ref) : new Date().getHours();
+  state.resetStrip = true;
+  state.hourFromData = !!ref;
+}
+
 async function refresh(force) {
   const ps = places();
   if (!ps.length) { render(); return; }
@@ -66,7 +75,7 @@ async function refresh(force) {
   if (!force && fresh) { render(); return; }
   if (inflight) { queued = true; return inflight; }
   state.loading = true;
-  renderTop();
+  render();
   inflight = (async () => {
     try {
       const items = await fetchForecasts(ps, state.settings.pastDays);
@@ -74,7 +83,7 @@ async function refresh(force) {
       state.fetchedAt = Date.now();
       state.failed = false;
       saveCache({ ts: state.fetchedAt, pastDays: state.settings.pastDays, items });
-      if (!state.hourFromData) { state.hour = nowHour(anyData()); state.hourFromData = true; }
+      if (!state.hourFromData) resetToNow();
     } catch (e) {
       state.failed = true; // keep whatever is cached and say so in the footer
     } finally {
@@ -88,108 +97,79 @@ async function refresh(force) {
 }
 
 // ---------- rendering ----------
-function dateLine() {
-  const ref = anyData();
-  const base = ref ? parseDay(nowDate(ref)) : new Date();
-  const date = addDays(base, state.day);
-  const isNow = ref && state.day === 0 && state.hour === nowHour(ref);
-  const past = ref && (state.day < 0 || (state.day === 0 && state.hour < nowHour(ref)));
-  return `${WEEKDAY_FULL[date.getDay()]}, ${date.getDate()} ${monthName(date)} · ${isNow ? 'עכשיו ' : ''}${hh(state.hour)}${past ? ' · מה שהיה' : ''}`;
+function headerHtml() {
+  return `<div class="gp-loc"><span class="gp-dot"></span><span class="gp-locname">כל המקומות</span><span class="gp-sep">·</span><button class="gp-link" data-act="add">הוספת מקום</button></div>
+    <div class="gp-h1"><h1>מזג אוויר</h1><div class="gp-hb"><button class="gp-menu${state.loading ? ' spin' : ''}" data-act="refresh" aria-label="רענון">${icon('gi-refresh')}</button><button class="gp-menu" data-act="settings" aria-label="הגדרות">${icon('gi-dots')}</button></div></div>`;
 }
 
-function renderTop() {
-  const top = $('#top');
+function footerHtml() {
+  const age = state.fetchedAt ? ago(Date.now() - state.fetchedAt) : '';
+  const stale = state.failed && state.fetchedAt ? '<br><span class="stale">אין חיבור לשרת. מוצגים נתונים שנשמרו.</span>' : '';
+  return `<div class="gp-foot">מזג אוויר ${APP_VERSION} · נתונים: Open-Meteo.com${age ? `<br>עודכן ${age}` : ''}${stale}</div>`;
+}
+
+function render() {
+  const list = $('#list');
+  setUnits(state.settings);
+  const prevTop = list.scrollTop;
+  const prevDays = $('#days') ? $('#days').scrollLeft : 0;
+  const firstStrip = $('.gp-strip');
+  const prevStrip = firstStrip ? firstStrip.scrollLeft : 0;
+
   const rs = rows();
+  const f = focusRow(rs);
+  if (f) state.focusKey = f.key;
   const ref = anyData();
-  const prevDays = $('#days');
-  const prevScroll = prevDays ? prevDays.scrollLeft : 0;
-  let body = '';
-  if (rs.length) {
-    const avail = ref ? Math.min(state.settings.pastDays, ...rs.filter((r) => r.data).map((r) => pastDaysAvailable(r.data))) : 0;
-    if (state.day < -avail) state.day = 0;
-    const days = ref ? daySelectorHtml({ todayIso: nowDate(ref), pastDays: avail, selected: state.day, rows: rs }) : '';
-    const chips = ref ? summary(rs, state.day, state.hour, state.metric) : [];
-    body = `<div class="days" id="days">${days}</div>
-      <div class="mets">${METRICS.map(([k, l]) => `<button class="pill ring${state.metric === k ? ' on' : ''}" data-act="metric" data-v="${k}" aria-pressed="${state.metric === k}">${l}</button>`).join('')}</div>
-      <div class="sumrow">${chips.map((c) => `<div class="sumchip"><span class="k">${esc(c.k)}</span>${c.name ? `<span class="v"><span class="nz">${esc(c.name)}</span><span class="vv num">${esc(c.val)}</span></span>` : `<span class="v">${esc(c.v)}</span>`}</div>`).join('')}</div>`;
+  let html = '<div class="ptr" id="ptr">משחרר לרענון…</div>' + headerHtml();
+
+  if (!rs.length) {
+    html += `<div class="gp-empty"><h2>איפה מזג האוויר?</h2>
+      <p>הוסף עיר או מקום כדי לראות איך נראה היום בכל אחד מהם, ומה היה בימים האחרונים.</p>
+      <div class="acts"><button class="gp-tonal fill" data-act="add">הוסף עיר</button><button class="gp-tonal" data-act="gps">${icon('gi-pin', 18)}המיקום שלי</button></div></div>`;
+  } else {
+    const loaded = rs.filter((r) => r.data);
+    const avail = loaded.length ? Math.min(state.settings.pastDays, ...loaded.map((r) => pastDaysAvailable(r.data))) : 0;
+    if (state.day < -avail) { state.day = 0; state.hourDay = 0; state.hour = ref ? nowHour(ref) : state.hour; }
+    if (ref) {
+      html += `<div class="gp-days" id="days">${dayTilesHtml({ todayIso: nowDate(ref), pastDays: avail, selected: state.day, focusData: f ? f.data : null, rows: rs })}</div>`;
+    }
+    if (!loaded.length && state.failed) {
+      html += `<div class="gp-errbox"><span>לא הצלחתי להביא נתונים. בדוק את החיבור לאינטרנט.</span><button class="gp-tonal" data-act="refresh">נסה שוב</button></div>`;
+    }
+    const s = { day: state.day, hourDay: state.hourDay, hour: state.hour };
+    html += rs.map((r) => placeCard(r, r.data, s, rs.length > 1 && r.key === state.focusKey)).join('');
   }
-  top.innerHTML = `<div class="hd"><div><h1 class="ttl">מזג אוויר</h1><div class="sub">${esc(dateLine())}</div></div>
-    <div class="hdbtns"><button class="icbtn${state.loading ? ' spin' : ''}" data-act="refresh" aria-label="רענון">${icon('refresh')}</button><button class="icbtn" data-act="settings" aria-label="הגדרות">${icon('sliders')}</button></div></div>${body}`;
+  html += footerHtml();
+  list.innerHTML = html;
+
+  list.scrollTop = prevTop;
   const days = $('#days');
   if (days) {
     if (state.resetDays && ref) {
       const today = days.querySelector('[data-d="0"]');
-      if (today) { today.scrollIntoView({ inline: 'start', block: 'nearest' }); state.resetDays = false; }
+      if (today) { today.scrollIntoView({ inline: 'start', block: 'nearest' }); state.resetDays = false; list.scrollTop = prevTop; }
     } else {
-      days.scrollLeft = prevScroll;
-      const sel = days.querySelector('.day.on');
-      if (sel) sel.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      days.scrollLeft = prevDays;
+      if (state.revealDay) {
+        const sel = days.querySelector('.gp-day.on');
+        if (sel) { sel.scrollIntoView({ inline: 'nearest', block: 'nearest' }); list.scrollTop = prevTop; }
+      }
     }
   }
-}
-
-function focusCard(rs) {
-  const f = focusRow(rs);
-  if (!f || !f.data) return '';
-  const x = at(f.data, state.day, state.hour);
-  if (!x) return '';
-  const rain = x.past ? `ירד ${mmSentence(x.rain)}` : `סיכוי גשם ${x.prob == null ? 0 : x.prob}%`;
-  return `<button class="fcard t-${x.scene}" data-act="open" data-key="${esc(f.key)}" aria-label="פירוט ${esc(f.name)}">
-    <img class="ic" style="width:38px;height:38px" src="icons/${x.icon}.svg" alt="">
-    <div class="fbig num">${fmtTemp(x.t)}</div>
-    <div class="finfo"><div class="fn">${esc(f.name)} · ${hh(state.hour)}</div>
-    <div class="fl">${esc(x.label)} · ${rain} · רוח <span class="num">${windNum(x.wind)}</span> ${windUnit()}</div>
-    <div class="fs">${esc(rainSentence(f.data, state.day))}</div></div>
-  </button>`;
-}
-
-function footer() {
-  const age = state.fetchedAt ? ago(Date.now() - state.fetchedAt) : '';
-  const stale = state.failed && state.fetchedAt ? '<br><span class="stale">אין חיבור לשרת. מוצגים נתונים שנשמרו.</span>' : '';
-  return `<div class="foot">מזג אוויר ${APP_VERSION} · נתונים: Open-Meteo.com${age ? `<br>עודכן ${age}` : ''}${stale}</div>`;
-}
-
-function renderList() {
-  const list = $('#list');
-  const prev = list.scrollTop;
-  const rs = rows();
-  let html = '<div class="ptr" id="ptr">משחרר לרענון…</div>';
-  if (!rs.length) {
-    html += `<div class="empty"><h2>איפה מזג האוויר?</h2>
-      <p>הוסף עיר או מקום כדי לראות איך נראה היום בכל אחד מהם, ומה היה בימים האחרונים.</p>
-      <div class="acts"><button class="pill cream" data-act="add">הוסף עיר</button><button class="pill ring" data-act="gps">${icon('pin', 18)}&nbsp;המיקום שלי</button></div></div>`;
-  } else {
-    const hasData = rs.some((r) => r.data);
-    if (!hasData && state.failed) {
-      html += `<div class="errbox"><span>לא הצלחתי להביא נתונים. בדוק את החיבור לאינטרנט.</span><button class="pill ring" data-act="refresh">נסה שוב</button></div>`;
-    }
-    const s = { day: state.day, hour: state.hour, metric: state.metric, focusKey: (focusRow(rs) || {}).key };
-    html += axisHtml(s, anyData());
-    html += rs.map((r) => ribbonRow(r, r.data, s)).join('');
-    html += focusCard(rs);
-  }
-  html += footer();
-  list.innerHTML = html;
-  list.scrollTop = prev;
-}
-
-function render() {
-  const rs = rows();
-  const f = focusRow(rs);
-  if (f) state.focusKey = f.key;
-  setUnits(state.settings);
-  setCalm(state.settings.calm);
-  renderTop();
-  renderList();
-  const x = f && f.data ? at(f.data, state.day, state.hour) : null;
-  setScene(x ? x.scene : new Date().getHours() >= 6 && new Date().getHours() < 18 ? 'sun' : 'night');
+  state.revealDay = false;
+  const x = state.resetStrip ? 0 : prevStrip;
+  state.resetStrip = false;
+  list.querySelectorAll('.gp-strip').forEach((el) => { el.scrollLeft = x; });
 }
 
 // ---------- actions ----------
 function setDay(d) {
-  state.day = d;
   const ref = anyData();
-  if (d === 0 && ref) state.hour = nowHour(ref);
+  state.day = d;
+  state.hourDay = d;
+  state.hour = d === 0 && ref ? nowHour(ref) : 7;
+  state.resetStrip = true;
+  state.revealDay = true;
   render();
 }
 
@@ -201,7 +181,7 @@ function openDetail(key) {
   state.sheetKey = key;
   const idx = state.saved.findIndex((p) => p.key === key);
   const ctx = { canUp: idx > 0, canDown: idx >= 0 && idx < state.saved.length - 1 };
-  const sheet = openSheet(detailHtml(r, r.data, { day: state.day, hour: state.hour }, ctx), () => { state.sheetKey = null; });
+  const sheet = openSheet(detailHtml(r, r.data, { hourDay: state.hourDay, hour: state.hour }, ctx), () => { state.sheetKey = null; });
   fetchAirQuality(r.lat, r.lon).then((aq) => { if (state.sheetKey === key) fillAqi(sheetEl() || sheet, aq); }).catch(() => {});
   render();
 }
@@ -295,10 +275,9 @@ function showSettings() {
       const daysChanged = next.pastDays !== state.settings.pastDays;
       state.settings = next;
       saveSettings(next);
-      if (daysChanged) { state.data = {}; state.fetchedAt = 0; state.resetDays = true; state.day = 0; refresh(true); }
+      if (daysChanged) { state.data = {}; state.fetchedAt = 0; state.resetDays = true; state.day = 0; state.hourDay = 0; refresh(true); }
       render();
     },
-    onClose: () => {},
   });
 }
 
@@ -308,15 +287,13 @@ document.addEventListener('click', (e) => {
   if (!t) return;
   switch (t.dataset.act) {
     case 'day': setDay(+t.dataset.d); break;
-    case 'metric': state.metric = t.dataset.v; render(); break;
-    case 'tap': {
-      const r = t.getBoundingClientRect();
-      const h = Math.floor(Math.min(23.99, Math.max(0, ((r.right - e.clientX) / r.width) * 24)));
+    case 'hour':
       state.focusKey = t.dataset.key;
-      state.hour = h;
+      state.hourDay = +t.dataset.d;
+      state.hour = +t.dataset.h;
       render();
       break;
-    }
+    case 'focus': state.focusKey = t.dataset.key; render(); break;
     case 'open': openDetail(t.dataset.key); break;
     case 'refresh': refresh(true); break;
     case 'settings': showSettings(); break;
@@ -326,10 +303,25 @@ document.addEventListener('click', (e) => {
     case 'remove': removePlace(t.dataset.key); break;
     case 'move-up': movePlace(t.dataset.key, -1); break;
     case 'move-down': movePlace(t.dataset.key, 1); break;
+    case 'acc': {
+      const ac = t.closest('.gp-ac');
+      const open = !ac.classList.contains('open');
+      ac.classList.toggle('open', open);
+      t.setAttribute('aria-expanded', String(open));
+      ac.querySelector('.gp-acb').hidden = !open;
+      break;
+    }
     default: break;
   }
 });
-$('#fab').dataset.act = 'add';
+
+// all hourly strips scroll together: that is the shared timeline
+$('#list').addEventListener('scroll', (e) => {
+  const el = e.target;
+  if (!el.classList || !el.classList.contains('gp-strip')) return;
+  const x = el.scrollLeft;
+  $('#list').querySelectorAll('.gp-strip').forEach((o) => { if (o !== el && o.scrollLeft !== x) o.scrollLeft = x; });
+}, true);
 
 // pull to refresh
 (() => {
@@ -354,14 +346,14 @@ $('#fab').dataset.act = 'add';
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   state.hourFromData = false;
-  refresh(false).then(() => { if (anyData() && !state.hourFromData) { state.hour = nowHour(anyData()); state.hourFromData = true; render(); } });
+  refresh(false).then(() => { if (anyData() && !state.hourFromData) { resetToNow(); render(); } });
   followGps();
 });
 setInterval(() => { if (document.visibilityState === 'visible') refresh(false); }, AUTO_REFRESH);
 
 // ---------- start ----------
 loadFromCache();
-if (anyData()) { state.hour = nowHour(anyData()); state.hourFromData = true; }
+if (anyData()) resetToNow();
 render();
 refresh(false);
 followGps();

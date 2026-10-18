@@ -1,7 +1,8 @@
 # מזג אוויר — Android app
 
-A personal multi-place weather app: one **Ribbon** row per place on a shared 24-hour axis, a day picker
-that reaches back into the past (to tell whether it rained), and a background that follows the weather.
+A personal multi-place weather app in the look of Google's weather card: one card per place, hourly strips that
+scroll together on a shared timeline, day tiles that reach back into the past (to tell whether it rained), and a
+scenic banner that follows the weather.
 The app itself is the plain HTML/CSS/JS in [`www/`](www/) (no framework, no build step), wrapped with
 [Capacitor](https://capacitorjs.com) as an installable Android app. Same structure as `TRADE-JORNAL`.
 
@@ -27,6 +28,8 @@ Editing `www/` needs no Android SDK. For a quick look in a browser, serve `www/`
 Weather: [Open-Meteo](https://open-meteo.com/) (free, no key, CC BY 4.0). Place search: Open-Meteo geocoding.
 City name for "my location": BigDataCloud client reverse geocoding. History ("what was") uses Open-Meteo's
 `past_days`: a model analysis, not rain-gauge measurements.
+
+Fonts: Google Sans Flex (Latin numerals, SIL Open Font License) and Heebo (Hebrew), both bundled in `www/fonts`.
 
 On the phone the app stores only your place list, settings and the last forecast it fetched (`localStorage`).
 Nothing is sent anywhere except the coordinates of your places to the weather and place-name services above.

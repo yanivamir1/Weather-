@@ -13,10 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <!-- The app is dark-only: near-black window, status and navigation bars. -->
-        <item name="android:background">#0A0A0B</item>
-        <item name="android:windowBackground">#0A0A0B</item>
-        <item name="android:statusBarColor">#0A0A0B</item>
-        <item name="android:navigationBarColor">#0A0A0B</item>
+        <item name="android:background">#232429</item>
+        <item name="android:windowBackground">#232429</item>
+        <item name="android:statusBarColor">#232429</item>
+        <item name="android:navigationBarColor">#232429</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 

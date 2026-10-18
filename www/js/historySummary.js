@@ -14,16 +14,15 @@ export function historyHtml(data) {
   const max = Math.max(5, ...days.map((x) => x.mm));
   const bars = days.map((x) => {
     const none = x.mm < 0.1;
-    const h = none ? 2 : Math.max(4, Math.round((x.mm / max) * 52));
+    const h = none ? 2 : Math.max(4, Math.round((x.mm / max) * 54));
     const label = x.d === 0 ? 'היום' : WEEKDAY_SHORT[x.date.getDay()];
-    return `<div class="hbar${x.d === 0 ? ' today' : ''}" aria-label="${esc(label)}: ${esc(mmSentence(x.mm))}"><span class="v num">${none ? '' : esc(mmText(x.mm))}</span><div class="col${none ? ' none' : ''}" style="height:${h}px"></div><span class="l">${label}</span></div>`;
+    return `<div class="hb${x.d === 0 ? ' today' : ''}" role="img" aria-label="${esc(label)}: ${esc(mmSentence(x.mm))}"><span class="v num">${none ? '' : esc(mmText(x.mm))}</span><i class="${none ? 'none' : ''}" style="height:${h}px"></i><span class="l">${label}</span></div>`;
   }).join('');
-  const t24 = rainLast(data, 24), t48 = rainLast(data, 48), t7 = rainLast(data, n * 24);
-  const tot = (label, v) => `<div class="tot"><span>${label}</span><b>${esc(mmSentence(v))}</b></div>`;
-  return `<div class="sec">
+  const tot = (label, v) => `<div class="gs-tot"><span>${label}</span><b>${esc(mmSentence(v))}</b></div>`;
+  return `<div class="gs-sec">
     <h3>גשם שירד <small>${n} ימים אחורה</small></h3>
-    <div class="hist" role="img" aria-label="גשם שירד בכל יום">${bars}</div>
-    <div class="tots">${tot('24 שעות', t24)}${tot('48 שעות', t48)}${tot(n + ' ימים', t7)}</div>
-    <div class="note">לפי מודל מזג האוויר, לא מד גשם. ממטרים מקומיים וקצרים יכולים להיות מוסטים או חסרים.</div>
+    <div class="gp-chart"><div class="hist">${bars}</div></div>
+    <div class="gs-tots">${tot('24 שעות', rainLast(data, 24))}${tot('48 שעות', rainLast(data, 48))}${tot(n + ' ימים', rainLast(data, n * 24))}</div>
+    <div class="gs-note">לפי מודל מזג האוויר, לא מד גשם. ממטרים מקומיים וקצרים יכולים להיות מוסטים או חסרים.</div>
   </div>`;
 }

@@ -3,6 +3,23 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v2 — 2026-10-18
+
+New look, copied from Google's weather card (design option 7, "all places").
+
+- **Google-style cards, one per place:** big "now" temperature with a glossy icon, condition and feels-like, an
+  hourly strip (temperature, rain chance in blue above the icon, icon, time) and a scenic banner that follows the
+  weather (sun, cloud, rain, storm, fog, snow, night). Dark Google palette and Google Sans numerals.
+- **Shared timeline:** every strip scrolls together, and tapping an hour on any card selects that hour for all places.
+- **Day tiles** (Google style) reach back into the past; a small blue dot marks past days on which it rained somewhere.
+  Past days and hours show rain in millimetres, and each card says "ירד גשם 09:00–14:00 · 8.1 מ״מ" or "לא ירד גשם".
+- **Detail ("פירוט") per place:** accordions for precipitation, wind, humidity and UV with a 24-hour chart, the
+  7-day rain chart with 24h / 48h / 7-day totals (labelled as model-based), pressure, air quality, sunrise/sunset,
+  wind direction, and move / remove (with Undo).
+- Removed with the old look: the Ribbon rows, the metric switch, the national summary chips, the animated page
+  background and the "calm background" setting. The app icon and splash match the new look.
+- Unchanged: "+" place search, "my location" (GPS), settings (units, days back), pull to refresh, offline cache.
+
 ## v1 — 2026-10-18
 
 First release. A multi-place weather app in the style of design option 5 ("Ribbon").
