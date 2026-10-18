@@ -35,23 +35,25 @@ function stripHtml(place, data, s) {
   }).join('');
 }
 
-function nameBlock(place, when) {
+function nameBlock(place, when, canDrag) {
   const pin = place.gps ? `<img class="pin" src="icons/gi-pin.svg" alt="">` : '';
-  return `<div class="gp-now"><button class="gp-namebtn" data-act="focus" data-key="${esc(place.key)}" aria-label="מיקוד ב${esc(place.name)}"><span class="n">${pin}<span>${esc(place.name)}</span></span>${when ? `<span class="w">${esc(when)}</span>` : ''}</button><button class="gp-more" data-act="open" data-key="${esc(place.key)}">פירוט ${icon('gi-chev', 14)}</button></div>`;
+  return `<div class="gp-now"><button class="gp-namebtn" data-act="focus" data-key="${esc(place.key)}" aria-label="מיקוד ב${esc(place.name)}"><span class="n">${pin}<span>${esc(place.name)}</span></span>${when ? `<span class="w">${esc(when)}</span>` : ''}</button><button class="gp-more" data-act="open" data-key="${esc(place.key)}">פירוט ${icon('gi-chev', 14)}</button>${canDrag ? `<button class="gp-grip" data-act="grip" aria-label="גרור כדי לשנות את הסדר" tabindex="-1">${icon('gi-grip')}</button>` : ''}</div>`;
 }
 
-export function placeCard(place, data, s, focused) {
+export function placeCard(place, data, s, focused, canDrag) {
   const foc = focused ? ' foc' : '';
+  const attrs = ` data-key="${esc(place.key)}"${place.gps ? ' data-pin' : ''}`;
+  const drag = canDrag && !place.gps;
   if (!data) {
-    return `<div class="gp-card sm sk${foc}"><div class="gp-top">${nameBlock(place, '')}<div class="gp-skbar"></div></div><div class="gp-skstrip"></div></div>`;
+    return `<div class="gp-card sm sk${foc}"${attrs}><div class="gp-top">${nameBlock(place, '', drag)}<div class="gp-skbar"></div></div><div class="gp-skstrip"></div></div>`;
   }
   const x = at(data, s.hourDay, s.hour);
-  if (!x) return `<div class="gp-card sm${foc}"><div class="gp-top">${nameBlock(place, '')}<div class="gp-msg">אין נתונים לשעה הזו</div></div></div>`;
+  if (!x) return `<div class="gp-card sm${foc}"${attrs}><div class="gp-top">${nameBlock(place, '', drag)}<div class="gp-msg">אין נתונים לשעה הזו</div></div></div>`;
   const date = addDays(parseDay(data.now), s.hourDay);
   const when = x.isNow ? 'עכשיו' : `${WEEKDAY_FULL[date.getDay()]} · ${hh(s.hour)}${x.past ? ' · מה שהיה' : ''}`;
   const line = rainSentence(data, s.hourDay);
-  return `<div class="gp-card sm${foc}">
-    <div class="gp-top">${nameBlock(place, when)}
+  return `<div class="gp-card sm${foc}"${attrs}>
+    <div class="gp-top">${nameBlock(place, when, drag)}
       <div class="gp-hero">
         <div class="gp-main"><div class="gp-temp num">${fmtTemp(x.t)}</div><img class="gp-ic" src="${glossy(x.icon)}" alt=""></div>
         <div class="gp-side"><div class="gp-cond">${esc(x.label)}</div><div class="gp-feels">הרגשה כמו <span class="num">${fmtTemp(x.feels)}</span></div><div class="gp-wet${WET_RE.test(line) ? '' : ' dry'}">${esc(line)}</div></div>

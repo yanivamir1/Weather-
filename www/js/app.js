@@ -4,6 +4,7 @@ import { APP_VERSION } from './version.js';
 import { fetchAirQuality, fetchForecasts, reverseGeocode } from './api.js';
 import { nowDate, nowHour, pastDaysAvailable } from './forecast.js';
 import { placeCard } from './placeCard.js';
+import { initDrag, isDragging } from './dragReorder.js';
 import { dayTilesHtml } from './daySelector.js';
 import { detailHtml, fillAqi } from './detailSheet.js';
 import { openAddSheet } from './addSheet.js';
@@ -109,6 +110,7 @@ function footerHtml() {
 }
 
 function render() {
+  if (isDragging()) return; // rebuilding the list would drop the card under the finger; onEnd of the drag renders
   const list = $('#list');
   setUnits(state.settings);
   const prevTop = list.scrollTop;
@@ -137,7 +139,7 @@ function render() {
       html += `<div class="gp-errbox"><span>לא הצלחתי להביא נתונים. בדוק את החיבור לאינטרנט.</span><button class="gp-tonal" data-act="refresh">נסה שוב</button></div>`;
     }
     const s = { day: state.day, hourDay: state.hourDay, hour: state.hour };
-    html += rs.map((r) => placeCard(r, r.data, s, rs.length > 1 && r.key === state.focusKey)).join('');
+    html += rs.map((r) => placeCard(r, r.data, s, rs.length > 1 && r.key === state.focusKey, state.saved.length > 1)).join('');
   }
   html += footerHtml();
   list.innerHTML = html;
@@ -220,6 +222,15 @@ function movePlace(key, dir) {
   savePlaces(state.saved);
   closeSheet();
   render();
+}
+
+/** Drop of a dragged card: put it at `to` among the saved places (the pinned "my location" card is not in that list). */
+function reorderPlace(key, to) {
+  const i = state.saved.findIndex((p) => p.key === key);
+  if (i < 0 || to < 0 || to >= state.saved.length || i === to) return;
+  const [p] = state.saved.splice(i, 1);
+  state.saved.splice(to, 0, p);
+  savePlaces(state.saved);
 }
 
 const GPS_MSG = {
@@ -323,11 +334,17 @@ $('#list').addEventListener('scroll', (e) => {
   $('#list').querySelectorAll('.gp-strip').forEach((o) => { if (o !== el && o.scrollLeft !== x) o.scrollLeft = x; });
 }, true);
 
+initDrag({
+  list: $('#list'),
+  onDrop: reorderPlace,
+  onEnd: render,
+});
+
 // pull to refresh
 (() => {
   const list = $('#list');
   let y0 = null, armed = false;
-  list.addEventListener('touchstart', (e) => { y0 = list.scrollTop <= 0 && !isSheetOpen() ? e.touches[0].clientY : null; armed = false; }, { passive: true });
+  list.addEventListener('touchstart', (e) => { y0 = list.scrollTop <= 0 && !isSheetOpen() && !isDragging() ? e.touches[0].clientY : null; armed = false; }, { passive: true });
   list.addEventListener('touchmove', (e) => {
     if (y0 == null) return;
     const dy = e.touches[0].clientY - y0;

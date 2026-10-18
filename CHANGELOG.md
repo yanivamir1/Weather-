@@ -3,6 +3,14 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v3 — 2026-10-18
+
+- **Reorder places by dragging:** each card has a grip handle (six dots, at the top of the card next to "פירוט").
+  Press and hold-drag it up or down: the card lifts, the others slide out of the way, the list scrolls by itself near
+  the top and bottom edge, and the new order is saved when you let go. Scrolling the list and the hourly strips works
+  as before, because a drag starts only from the handle. "My location" stays pinned at the top (no handle).
+  The move up / move down buttons in the detail sheet are still there.
+
 ## v2 — 2026-10-18
 
 New look, copied from Google's weather card (design option 7, "all places").
