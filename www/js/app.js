@@ -273,7 +273,7 @@ async function followGps() {
 
 function openAdd() {
   openAddSheet({
-    existing: places().map((p) => p.key),
+    existing: places().map((p) => ({ key: p.key, lat: p.lat, lon: p.lon })),
     gpsOn: !!(state.gps && state.gps.enabled && state.settings.showGps),
     onAdd: addPlace,
     onGps: enableGps,

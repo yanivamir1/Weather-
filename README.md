@@ -25,7 +25,12 @@ Editing `www/` needs no Android SDK. For a quick look in a browser, serve `www/`
 
 ## Data
 
-Weather: [Open-Meteo](https://open-meteo.com/) (free, no key, CC BY 4.0). Place search: Open-Meteo geocoding.
+Weather: [Open-Meteo](https://open-meteo.com/) (free, no key, CC BY 4.0). Place search: the bundled Israeli gazetteer
+(`www/data/il-places.json`, ~1,300 localities and sites, searched offline by Hebrew or English name, see `www/js/gazetteer.js`)
+first, then Open-Meteo geocoding for the rest of the world. Open-Meteo only knows many small localities by an English name
+(e.g. משמר העמק), so a Hebrew search against it alone misses them. The gazetteer is the Central Bureau of Statistics
+localities list (via the MIT-licensed npm package `israel-geolocation`); about 90 coordinates in it were placeholders
+or wrong and were replaced with OpenStreetMap (ODbL) positions, 8 unplaceable tiny localities were dropped.
 City name for "my location": BigDataCloud client reverse geocoding. History ("what was") uses Open-Meteo's
 `past_days`: a model analysis, not rain-gauge measurements.
 

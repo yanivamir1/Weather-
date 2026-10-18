@@ -3,6 +3,18 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v4 — 2026-10-18
+
+- **No Israeli place goes missing in the "+" search.** The search used to rely on Open-Meteo's geocoder alone, which holds
+  many small localities (e.g. משמר העמק) only under an English name, so a Hebrew search found nothing. The app now carries
+  its own list of ~1,300 Israeli localities and sites (cities, towns, kibbutzim, moshavim, community settlements, Arab,
+  Druze and Bedouin villages, settlements in Judea and Samaria, plus well-known sites such as Masada, Ein Bokek and
+  Mount Hermon), searched instantly and offline, by Hebrew or English name. Spelling variants find the same place
+  (קריית / קרית, with or without a geresh, hyphen or niqqud). Online results still come from Open-Meteo for the rest of
+  the world and are merged in without duplicates; with no connection the Israeli matches still show, with a note.
+- A place that is already on the list shows as added even if it was added earlier under the online entry.
+- Credit for the data source was added to Settings.
+
 ## v3 — 2026-10-18
 
 - **Reorder places by dragging:** each card has a grip handle (six dots, at the top of the card next to "פירוט").

@@ -35,7 +35,7 @@ export function deviceTz() {
 const round4 = (n) => Math.round(n * 10000) / 10000;
 
 export async function searchPlaces(q) {
-  const url = `${GEOCODE}?name=${encodeURIComponent(q)}&count=8&language=he&format=json`;
+  const url = `${GEOCODE}?name=${encodeURIComponent(q)}&count=12&language=he&format=json`;
   const j = await getJson(url, 10000);
   return (j.results || []).map((r) => ({
     key: 'g' + r.id,
