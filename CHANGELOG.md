@@ -3,6 +3,14 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v7 — 2026-10-19
+
+- **High and low for every day, in every place.** Each place card now has a row under the hourly strip with one column per
+  day (the past days, today, then the week ahead): the high on top, the low under it. Today is the first column, the rows of
+  all places scroll together, and tapping a day picks it for every card. Until now the highs and lows were only on the day
+  tiles at the top, and only for the focused place.
+- Settings → גבוהה ונמוכה לכל יום lets you hide the row again (the card is about 70px shorter without it).
+
 ## v6 — 2026-10-19
 
 - **Text size, in five levels** (Settings → גודל טקסט): קטן · רגיל · גדול · גדול מאוד · ענק. Every text in the app scales,

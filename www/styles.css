@@ -101,6 +101,16 @@ img { display: block; }
 .gp-hc .r { font-size: calc(15px * var(--fs)); color: var(--blue); height: calc(26px * var(--fs) * var(--lh)); line-height: calc(26px * var(--fs) * var(--lh)); white-space: nowrap; margin-top: calc(8px * var(--ms)); }
 .gp-hc .ic { width: 38px; height: 38px; }
 .gp-hc .l { font-size: calc(16px * var(--fs)); font-weight: 500; color: #c0c0c2; margin-top: calc(10px * var(--ms)); }
+/* high / low of every day, for this place: high above low, today first like the day tiles */
+.gp-dstrip { display: flex; overflow-x: auto; scrollbar-width: none; direction: rtl; padding: calc(4px * var(--ms)) 8px calc(6px * var(--ms)); border-top: 1px solid var(--line); }
+.gp-dstrip::-webkit-scrollbar { display: none; }
+.gp-dc { width: calc(52px * var(--fs)); flex: none; display: flex; flex-direction: column; align-items: center; gap: calc(1px * var(--ms)); padding: calc(5px * var(--ms)) 0; border-radius: 14px; transition: background .25s; }
+.gp-dc .w { font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs) * var(--lh)); font-weight: 500; color: var(--tx2); white-space: nowrap; }
+.gp-dc .hi { font-size: calc(16px * var(--fs)); line-height: calc(22px * var(--fs) * var(--lh)); font-weight: 500; color: var(--tx); }
+.gp-dc .lo { font-size: calc(14px * var(--fs)); line-height: calc(18px * var(--fs) * var(--lh)); color: var(--tx2); }
+.gp-dc.sel { background: var(--tile); }
+.gp-dc.sel .w { color: var(--tx); }
+.gp-dc.past { opacity: .8; }
 .gp-banner { width: 100%; height: var(--bn); object-fit: cover; }
 .sk .gp-skbar { height: 56px; margin: 4px 0 12px; border-radius: 14px; background: linear-gradient(90deg, #33353b, #3b3d44, #33353b); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 .sk .gp-skstrip { height: 100px; margin: 0 18px 18px; border-radius: 14px; background: linear-gradient(90deg, #33353b, #3b3d44, #33353b); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }

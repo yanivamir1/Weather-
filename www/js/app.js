@@ -35,6 +35,7 @@ const state = {
   resetDays: true,  // scroll the day tiles so that today is the first tile
   revealDay: false, // scroll the selected day tile into view after a tap on it
   resetStrip: true, // put the strips back at their first column
+  resetDayStrip: true, // put the high/low day strips back so that today is the first column
   sheetKey: null,
 };
 let inflight = null;
@@ -118,6 +119,8 @@ function render() {
   const prevDays = $('#days') ? $('#days').scrollLeft : 0;
   const firstStrip = $('.gp-strip');
   const prevStrip = firstStrip ? firstStrip.scrollLeft : 0;
+  const firstDays = $('.gp-dstrip');
+  const prevDayStrip = firstDays ? firstDays.scrollLeft : null;
 
   const rs = rows();
   const f = focusRow(rs);
@@ -139,7 +142,7 @@ function render() {
     if (!loaded.length && state.failed) {
       html += `<div class="gp-errbox"><span>לא הצלחתי להביא נתונים. בדוק את החיבור לאינטרנט.</span><button class="gp-tonal" data-act="refresh">נסה שוב</button></div>`;
     }
-    const s = { day: state.day, hourDay: state.hourDay, hour: state.hour };
+    const s = { day: state.day, hourDay: state.hourDay, hour: state.hour, avail, dayTemps: state.settings.dayTemps };
     html += rs.map((r) => placeCard(r, r.data, s, rs.length > 1 && r.key === state.focusKey, state.saved.length > 1)).join('');
   }
   html += footerHtml();
@@ -163,6 +166,20 @@ function render() {
   const x = state.resetStrip ? 0 : prevStrip;
   state.resetStrip = false;
   list.querySelectorAll('.gp-strip').forEach((el) => { el.scrollLeft = x; });
+
+  // the high/low day strips scroll together too; the first time (or after a reset) today is the first column
+  const dayStrips = list.querySelectorAll('.gp-dstrip');
+  if (dayStrips.length) {
+    let dx = prevDayStrip;
+    if (state.resetDayStrip || dx == null) {
+      const first = dayStrips[0], today = first.querySelector('[data-d="0"]');
+      first.scrollLeft = 0;
+      if (today) first.scrollLeft += today.getBoundingClientRect().right - (first.getBoundingClientRect().right - parseFloat(getComputedStyle(first).paddingRight));
+      dx = first.scrollLeft;
+      state.resetDayStrip = false;
+    }
+    dayStrips.forEach((el) => { el.scrollLeft = dx; });
+  }
 }
 
 // ---------- actions ----------
@@ -288,7 +305,7 @@ function showSettings() {
       state.settings = next;
       saveSettings(next);
       applyLook(next);
-      if (daysChanged) { state.data = {}; state.fetchedAt = 0; state.resetDays = true; state.day = 0; state.hourDay = 0; refresh(true); }
+      if (daysChanged) { state.data = {}; state.fetchedAt = 0; state.resetDays = true; state.resetDayStrip = true; state.day = 0; state.hourDay = 0; refresh(true); }
       render();
     },
   });
@@ -331,9 +348,10 @@ document.addEventListener('click', (e) => {
 // all hourly strips scroll together: that is the shared timeline
 $('#list').addEventListener('scroll', (e) => {
   const el = e.target;
-  if (!el.classList || !el.classList.contains('gp-strip')) return;
+  const cls = el.classList && ['gp-strip', 'gp-dstrip'].find((c) => el.classList.contains(c));
+  if (!cls) return;
   const x = el.scrollLeft;
-  $('#list').querySelectorAll('.gp-strip').forEach((o) => { if (o !== el && o.scrollLeft !== x) o.scrollLeft = x; });
+  $('#list').querySelectorAll('.' + cls).forEach((o) => { if (o !== el && o.scrollLeft !== x) o.scrollLeft = x; });
 }, true);
 
 initDrag({

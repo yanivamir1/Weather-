@@ -1,6 +1,7 @@
 // One place = one Google-weather-style card: place + "now" hero, an hourly strip (temperature, rain chance above the
 // icon, icon, time) and a scenic banner. All strips share one hour axis (they scroll together, see app.js).
-import { at, nowHour, rainSentence } from './forecast.js';
+import { at, dayInfo, nowDate, nowHour, rainSentence } from './forecast.js';
+import { dayLabel } from './daySelector.js';
 import { bannerOf, glossy, isCloudIcon } from './weatherCodes.js';
 import { esc, icon } from './dom.js';
 import { fmtTemp, mmText } from './units.js';
@@ -35,6 +36,19 @@ function stripHtml(place, data, s) {
   }).join('');
 }
 
+/** One column per day (past days to the right of today, like the day tiles): high above low, for this place. Tap = pick that day. */
+function dayStripHtml(place, data, s) {
+  const base = parseDay(nowDate(data));
+  let html = '';
+  for (let d = -s.avail; d < FORECAST_DAYS; d++) {
+    const di = dayInfo(data, d);
+    if (!di) continue;
+    const date = addDays(base, d);
+    html += `<button class="gp-dc${d === s.day ? ' sel' : ''}${d < 0 ? ' past' : ''}" data-act="day" data-d="${d}" aria-pressed="${d === s.day}" aria-label="${esc(place.name)}, ${WEEKDAY_FULL[date.getDay()]}${d < 0 ? ' (מה שהיה)' : ''}, גבוהה ${fmtTemp(di.hi)}, נמוכה ${fmtTemp(di.lo)}"><span class="w">${dayLabel(d, date)}</span><span class="hi num">${fmtTemp(di.hi)}</span><span class="lo num">${fmtTemp(di.lo)}</span></button>`;
+  }
+  return html;
+}
+
 function nameBlock(place, when, canDrag) {
   const pin = place.gps ? `<img class="pin" src="icons/gi-pin.svg" alt="">` : '';
   return `<div class="gp-now"><button class="gp-namebtn" data-act="focus" data-key="${esc(place.key)}" aria-label="מיקוד ב${esc(place.name)}"><span class="n">${pin}<span>${esc(place.name)}</span></span>${when ? `<span class="w">${esc(when)}</span>` : ''}</button><button class="gp-more" data-act="open" data-key="${esc(place.key)}">פירוט ${icon('gi-chev', 14)}</button>${canDrag ? `<button class="gp-grip" data-act="grip" aria-label="גרור כדי לשנות את הסדר" tabindex="-1">${icon('gi-grip')}</button>` : ''}</div>`;
@@ -60,6 +74,7 @@ export function placeCard(place, data, s, focused, canDrag) {
       </div>
     </div>
     <div class="gp-strip">${stripHtml(place, data, s)}</div>
+    ${s.dayTemps ? `<div class="gp-dstrip" role="group" aria-label="גבוהה ונמוכה לכל יום">${dayStripHtml(place, data, s)}</div>` : ''}
     <img class="gp-banner" src="${bannerOf(x.scene)}" alt="">
   </div>`;
 }

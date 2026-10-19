@@ -13,6 +13,7 @@ export function openSettings(settings, { onChange }) {
       <div class="row"><span class="sl">טמפרטורה</span>${seg('temp', s.temp, [['c', '°C'], ['f', '°F']])}</div>
       <div class="row"><span class="sl">רוח</span>${seg('wind', s.wind, [['kmh', 'קמ״ש'], ['ms', 'מ׳/ש׳'], ['mph', 'mph']])}</div>
       <div class="row"><span class="sl">ימים אחורה (מה היה)</span>${seg('pastDays', s.pastDays, [[3, '3'], [7, '7'], [14, '14'], [30, '30']])}</div>
+      <div class="row"><span class="sl">גבוהה ונמוכה לכל יום</span>${seg('dayTemps', s.dayTemps, [[true, 'מוצג'], [false, 'מוסתר']])}</div>
       <div class="row"><span class="sl">המיקום שלי</span>${seg('showGps', s.showGps, [[true, 'מוצג'], [false, 'מוסתר']])}</div>
     </div>
     <div class="gs-about">מזג אוויר ${APP_VERSION}<br>נתונים: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0).<br>רשימת יישובי ישראל: הלשכה המרכזית לסטטיסטיקה, וקואורדינטות מ-<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL).<br>ימי עבר ושעות עבר מבוססים על ניתוח של מודלי מזג האוויר, לא על מד גשם.</div>`;
