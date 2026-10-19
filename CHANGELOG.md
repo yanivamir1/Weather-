@@ -3,6 +3,16 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v6 — 2026-10-19
+
+- **Text size, in five levels** (Settings → גודל טקסט): קטן · רגיל · גדול · גדול מאוד · ענק. Every text in the app scales,
+  and so do the boxes that hold it (hour columns, day tiles), so nothing is cut off. A long place name now wraps to a
+  second line instead of being cut with "…".
+- **Row spacing, in four levels** (Settings → רווח בין השורות): צפוף מאוד · צפוף · מצומצם · רגיל. It sets the gap between
+  place cards, the padding inside each card, the line height and the height of the scenery banner. "רגיל" is the v5
+  layout. **The new default is "מצומצם"**, a bit tighter than before, as asked; pick "רגיל" to get the old spacing back.
+- Both settings apply live and are remembered.
+
 ## v5 — 2026-10-18
 
 - **Fix: the place name was cut off** ("בני…", "מו…"). The name shared one line with "יום שלישי · 07:00 · מה שהיה" (or

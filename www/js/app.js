@@ -13,6 +13,7 @@ import { $, clearToast, closeSheet, esc, icon, isSheetOpen, openSheet, sheetEl, 
 import { ago } from './i18n.js';
 import { distanceKm, getPosition } from './geo.js';
 import { setUnits } from './units.js';
+import { applyLook } from './look.js';
 import { loadCache, loadGps, loadPlaces, loadSettings, saveCache, saveGps, savePlaces, saveSettings } from './storage.js';
 
 const CACHE_TTL = 15 * 60 * 1000;
@@ -286,6 +287,7 @@ function showSettings() {
       const daysChanged = next.pastDays !== state.settings.pastDays;
       state.settings = next;
       saveSettings(next);
+      applyLook(next);
       if (daysChanged) { state.data = {}; state.fetchedAt = 0; state.resetDays = true; state.day = 0; state.hourDay = 0; refresh(true); }
       render();
     },
@@ -369,6 +371,7 @@ document.addEventListener('visibilitychange', () => {
 setInterval(() => { if (document.visibilityState === 'visible') refresh(false); }, AUTO_REFRESH);
 
 // ---------- start ----------
+applyLook(state.settings);
 loadFromCache();
 if (anyData()) resetToNow();
 render();

@@ -18,7 +18,8 @@ function write(key, value) {
   }
 }
 
-export const DEFAULT_SETTINGS = { temp: 'c', wind: 'kmh', pastDays: 7, showGps: true };
+// textSize 0..4 = קטן · רגיל · גדול · גדול מאוד · ענק; density 0..3 = צפוף מאוד · צפוף · מצומצם · רגיל (see styles.css).
+export const DEFAULT_SETTINGS = { temp: 'c', wind: 'kmh', pastDays: 7, showGps: true, textSize: 1, density: 2 };
 
 export const loadPlaces = () => read(K.places, []);
 export const savePlaces = (v) => write(K.places, v);
