@@ -219,3 +219,10 @@ img { display: block; }
 #toast-root { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); z-index: 40; display: flex; justify-content: center; pointer-events: none; padding: 0 16px; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 14px; padding: 0 8px 0 18px; min-height: 52px; border-radius: 14px; background: #e3e3e8; color: #1f1f23; font-size: calc(14.5px * var(--fs)); box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: sheetup .25s ease-out; }
 .toast button { min-height: 44px; padding: 0 12px; color: #0b57d0; font-weight: 500; font-size: calc(14.5px * var(--fs)); }
+
+/* Google key row in Settings */
+.gs-g { display: flex; flex-direction: column; gap: 8px; }
+.gp-keyrow { display: flex; gap: 8px; align-items: center; }
+.gp-keyrow input { flex: 1; min-width: 0; height: 44px; border: 0; border-radius: 999px; background: var(--tile); color: var(--tx); font: inherit; font-size: calc(15px * var(--fs)); padding: 0 16px; direction: ltr; text-align: left; outline: none; }
+.gp-keyrow input::placeholder { color: var(--tx2); direction: rtl; }
+.gs-gstat { font-size: calc(13px * var(--fs)); color: var(--blue); line-height: 1.4; }

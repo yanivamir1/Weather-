@@ -14,7 +14,8 @@ import { ago } from './i18n.js';
 import { distanceKm, getPosition } from './geo.js';
 import { setUnits } from './units.js';
 import { applyLook } from './look.js';
-import { loadCache, loadGps, loadPlaces, loadSettings, saveCache, saveGps, savePlaces, saveSettings } from './storage.js';
+import { REASON_TEXT, applyGoogle, googleUsage, testGoogleKey } from './google.js';
+import { loadCache, loadGoogleKey, loadGps, loadPlaces, loadSettings, saveCache, saveGoogleCache, saveGoogleKey, saveGps, savePlaces, saveSettings } from './storage.js';
 
 const CACHE_TTL = 15 * 60 * 1000;
 const AUTO_REFRESH = 30 * 60 * 1000;
@@ -37,6 +38,7 @@ const state = {
   resetStrip: true, // put the strips back at their first column
   resetDayStrip: true, // put the high/low day strips back so that today is the first column
   sheetKey: null,
+  google: null,    // what the last Google call round said: { ok, partial, reason } (null = Google not in use)
 };
 let inflight = null;
 let queued = false;
@@ -82,6 +84,10 @@ async function refresh(force) {
   inflight = (async () => {
     try {
       const items = await fetchForecasts(ps, state.settings.pastDays);
+      // Google's forecast replaces Open-Meteo's for the hours still ahead; any failure leaves Open-Meteo in place
+      const gkey = state.settings.source === 'google' ? loadGoogleKey() : '';
+      state.google = gkey ? await applyGoogle(items, ps, gkey, force) : null;
+      if (state.google && state.google.reason && force) toast('Google: ' + (REASON_TEXT[state.google.reason] || REASON_TEXT.other) + '. מוצגת תחזית Open-Meteo.');
       state.data = items;
       state.fetchedAt = Date.now();
       state.failed = false;
@@ -108,7 +114,12 @@ function headerHtml() {
 function footerHtml() {
   const age = state.fetchedAt ? ago(Date.now() - state.fetchedAt) : '';
   const stale = state.failed && state.fetchedAt ? '<br><span class="stale">אין חיבור לשרת. מוצגים נתונים שנשמרו.</span>' : '';
-  return `<div class="gp-foot">מזג אוויר ${APP_VERSION} · נתונים: Open-Meteo.com${age ? `<br>עודכן ${age}` : ''}${stale}</div>`;
+  const g = state.settings.source === 'google';
+  const used = g && Object.values(state.data).some((d) => d && d.src === 'google');
+  const src = used ? 'תחזית: Google Weather · מה שהיה: Open-Meteo.com' : 'נתונים: Open-Meteo.com';
+  const gnote = !g ? '' : !loadGoogleKey() ? '<br><span class="stale">Google: חסר מפתח (בהגדרות)</span>'
+    : state.google && state.google.reason ? `<br><span class="stale">Google: ${REASON_TEXT[state.google.reason] || REASON_TEXT.other}${used ? ' (חלק מהנתונים מהשמירה)' : ''}</span>` : '';
+  return `<div class="gp-foot">מזג אוויר ${APP_VERSION} · ${src}${age ? `<br>עודכן ${age}` : ''}${stale}${gnote}</div>`;
 }
 
 function render() {
@@ -300,12 +311,22 @@ function openAdd() {
 
 function showSettings() {
   openSettings(state.settings, {
+    googleInfo: () => ({ key: loadGoogleKey(), usage: googleUsage(), reason: state.google && state.google.reason }),
+    onKey: async (raw) => {
+      const k = raw.trim();
+      if (!k) { saveGoogleKey(''); saveGoogleCache({}); state.google = null; state.fetchedAt = 0; render(); return { ok: true, cleared: true }; }
+      const r = await testGoogleKey(k);
+      if (r.ok) { saveGoogleKey(k); saveGoogleCache({}); state.fetchedAt = 0; refresh(true); }
+      return r;
+    },
     onChange: (next) => {
       const daysChanged = next.pastDays !== state.settings.pastDays;
+      const sourceChanged = next.source !== state.settings.source;
       state.settings = next;
       saveSettings(next);
       applyLook(next);
       if (daysChanged) { state.data = {}; state.fetchedAt = 0; state.resetDays = true; state.resetDayStrip = true; state.day = 0; state.hourDay = 0; refresh(true); }
+      else if (sourceChanged && (next.source === 'om' || loadGoogleKey())) { state.fetchedAt = 0; refresh(true); }
       render();
     },
   });

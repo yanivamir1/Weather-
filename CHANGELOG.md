@@ -3,6 +3,20 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v8 — 2026-10-25
+
+- **Google as a forecast source (optional).** Settings → מקור התחזית → Google, then paste a Google Weather API key. The hourly
+  forecast (to the end of the 7th day) and the daily forecast of every place then come from Google, the same source as
+  Google's own weather card; the past days and the "what was" history stay Open-Meteo's (Google keeps only 24 hours back).
+  Open-Meteo remains the default and the fallback: no key, a wrong key, an exhausted quota or no connection leaves
+  Open-Meteo's forecast on screen and the footer says why.
+- **The key lives only on the phone** (typed into Settings, never in the app or the repo). "שמירה ובדיקה" checks it with
+  one call before saving it.
+- **Calls are limited on purpose.** Google's answers are kept for 3 hours (20 minutes minimum for a manual refresh), a
+  wrong key or an exhausted quota stops after one call, and Settings shows the calls used this month. One full refresh of
+  one place is up to 8 calls (hours come 24 per call, plus the days); the free allowance of a regular key is 10,000 a month.
+- Google's weather conditions are translated into the same icons, labels and scenery as before.
+
 ## v7 — 2026-10-19
 
 - **High and low for every day, in every place.** Each place card now has a row under the hourly strip with one column per
