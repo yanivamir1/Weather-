@@ -3,6 +3,23 @@
 Every APK build that goes out gets a version, starting at v1. See `CLAUDE.md` for the release
 checklist (what has to be bumped/updated together).
 
+## v9 — 2026-10-26
+
+Google source: far fewer calls (the key's quota ran out quickly).
+
+- **3 calls per place instead of 8** for a full refresh: Google's hourly forecast now covers the next 48 hours (2 calls, 24 hours
+  each) plus the 7-day daily forecast (1 call). Before, it fetched all 7 days of hours.
+- **The hours after those 48 are calibrated to Google's daily forecast** instead of being fetched: temperatures are stretched to
+  Google's high and low, a day Google calls dry stays dry (no rain, no storm icon), and a wet day gets Google's rain amount and
+  chance in one stretch of hours. So the strip and the day tiles never disagree.
+- **Only the refresh button and pull-to-refresh can ask Google again early** (and only for answers older than 30 minutes). Adding a
+  place, coming back to the app, the GPS moving or the 30-minute timer never refetch an answer younger than **6 hours** (was 3).
+  Before, those internal refreshes could refetch everything every 20 minutes.
+- Two places are fetched at a time (no more bursts), and a wrong key, a used-up quota or a per-minute limit stops the rest of
+  that round after the first failure.
+- Settings shows calls **today** and this month, and, on an error, Google's own explanation, which tells a per-minute limit from a
+  daily one ("יותר מדי קריאות בדקה אחת" vs "נגמרה המכסה של המפתח").
+
 ## v8 — 2026-10-25
 
 - **Google as a forecast source (optional).** Settings → מקור התחזית → Google, then paste a Google Weather API key. The hourly

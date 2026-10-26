@@ -1,17 +1,21 @@
 // Google Weather API (weather.googleapis.com) as an optional source for the FORECAST part of every place.
 // Open-Meteo stays the base (it is the only one with the past days and the "what was" history); when Google is
-// switched on, its hourly forecast (up to the end of the 7th day) and daily forecast replace Open-Meteo's for the
-// hours and days that are still ahead. Everything is merged into the same normalized shape as api.js, so no other
-// module needs to know where a number came from.
+// switched on, its daily forecast (7 days) and its hourly forecast for the next 48 hours replace Open-Meteo's. The
+// hours further ahead stay Open-Meteo's, but are calibrated to Google's daily verdict (temperatures stretched to
+// Google's high and low, dry days kept dry, wet days given Google's rain amount), so one place never says "rain" in
+// the strip while the day tile says "dry". Everything is merged into the same normalized shape as api.js.
 //
-// Calls are counted (the free allowance is 10,000 a month) and kept for a while, because one full refresh of one place
-// is up to 8 calls (hours come 24 at a time, plus one for the days).
+// Calls are the scarce thing: hours come 24 per call, so a full refresh of one place is 3 calls (2 pages of hours + the
+// days). Answers are kept for 6 hours, a manual refresh reuses answers younger than 30 minutes, and every call is counted.
 import { loadGoogleCache, loadGoogleUsage, saveGoogleCache, saveGoogleUsage } from './storage.js';
 import { FORECAST_DAYS } from './api.js';
+import { isWet } from './weatherCodes.js';
 
 const BASE = 'https://weather.googleapis.com/v1';
-export const GOOGLE_TTL = 3 * 60 * 60 * 1000;      // a forecast older than this is fetched again on refresh
-export const GOOGLE_MIN_AGE = 20 * 60 * 1000;      // even a manual refresh reuses an answer younger than this
+export const GOOGLE_TTL = 6 * 60 * 60 * 1000;      // a forecast older than this is fetched again on a normal refresh
+export const GOOGLE_MIN_AGE = 30 * 60 * 1000;      // even a manual refresh reuses an answer younger than this
+export const GOOGLE_HOURS = 48;                    // hourly forecast hours fetched (24 per call)
+export const GOOGLE_CALLS_PER_PLACE = GOOGLE_HOURS / 24 + 1;
 export const GOOGLE_FREE_CALLS = 10000;
 
 const round4 = (n) => Math.round(n * 10000) / 10000;
@@ -31,26 +35,29 @@ export const wmoOf = (type) => (type in WMO ? WMO[type] : 3);
 
 // ---------- calls ----------
 export class GoogleError extends Error {
-  constructor(reason, status) { super(reason); this.reason = reason; this.status = status; }
+  constructor(reason, status, detail) { super(reason); this.reason = reason; this.status = status; this.detail = detail || ''; }
 }
-/** key = the key is wrong, denied = the API is off for that key, quota = limit reached, network, other. */
+/** key = wrong key, denied = the API is off for that key, quota = the (daily) limit is used up, rate = too many calls in a minute, network, other. */
 export const REASON_TEXT = {
   key: 'המפתח לא תקין',
   denied: 'המפתח אינו מורשה ל-Weather API (צריך להפעיל אותו ל-Weather API בלבד, בלי הגבלת אפליקציה)',
-  quota: 'נגמרה המכסה של המפתח',
+  quota: 'נגמרה המכסה של המפתח (מתאפסת מחר)',
+  rate: 'יותר מדי קריאות בדקה אחת, נסה שוב בעוד דקה',
   network: 'אין חיבור ל-Google',
   other: 'Google החזיר שגיאה',
 };
+/** Errors that mean "stop asking for now": the next place would fail the same way. */
+const STOPS = ['key', 'denied', 'quota', 'rate'];
 
+// calls this month and today (the demo key's allowance is daily)
+const dayKey = () => new Date().toISOString().slice(0, 10);
 function countCall() {
-  const month = new Date().toISOString().slice(0, 7);
-  const u = loadGoogleUsage();
-  saveGoogleUsage(u.month === month ? { month, n: u.n + 1 } : { month, n: 1 });
+  const u = loadGoogleUsage(), day = dayKey(), month = day.slice(0, 7);
+  saveGoogleUsage({ month, n: (u.month === month ? u.n : 0) + 1, day, dn: (u.day === day ? u.dn || 0 : 0) + 1 });
 }
 export function googleUsage() {
-  const month = new Date().toISOString().slice(0, 7);
-  const u = loadGoogleUsage();
-  return u.month === month ? u.n : 0;
+  const u = loadGoogleUsage(), day = dayKey();
+  return { month: u.month === day.slice(0, 7) ? u.n : 0, today: u.day === day ? u.dn || 0 : 0 };
 }
 
 async function getJson(url, key) {
@@ -66,11 +73,16 @@ async function getJson(url, key) {
     clearTimeout(timer);
   }
   if (res.ok) return res.json();
+  // Google says why in the body; keep a short piece of it, it is what tells a per-minute limit from a daily one
+  let err = {};
+  try { err = (await res.json()).error || {}; } catch (e) { /* no body */ }
+  const detail = String(err.message || '').slice(0, 180);
+  const text = detail + ' ' + JSON.stringify(err.details || '');
   let reason = 'other';
-  if (res.status === 429) reason = 'quota';
+  if (/API_KEY_INVALID|API key not valid/i.test(text) || res.status === 401) reason = 'key';
+  else if (res.status === 429 || /RATE_LIMIT_EXCEEDED|RESOURCE_EXHAUSTED|quota/i.test(text)) reason = /minute/i.test(text) ? 'rate' : 'quota';
   else if (res.status === 403) reason = 'denied';
-  else if (res.status === 400 || res.status === 401) reason = 'key';
-  throw new GoogleError(reason, res.status);
+  throw new GoogleError(reason, res.status, detail);
 }
 
 const where = (p) => `location.latitude=${round4(p.lat)}&location.longitude=${round4(p.lon)}`;
@@ -85,7 +97,7 @@ export async function testGoogleKey(key, probe = { lat: 32.0809, lon: 34.7806 })
   }
 }
 
-/** The raw answer for one place: hours until the end of the last forecast day, and the days. */
+/** The raw answer for one place: the next GOOGLE_HOURS hours, and the 7 days. */
 async function fetchPlace(place, key, hoursNeeded) {
   const hoursChain = async () => {
     const out = [];
@@ -138,7 +150,10 @@ const localKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${
 const localIso = (iso) => { if (!iso) return null; const d = new Date(iso); return `${localKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const dayNumber = (y, m, d) => Date.UTC(y, m - 1, d) / 86400000;
 
-/** Writes Google's forecast over the hours and days that are still ahead. Returns a new object; `data` is left alone. */
+/**
+ * Writes Google's forecast over the hours and days that are still ahead. Returns a new object; `data` is left alone.
+ * Hours Google did not cover (everything after its 48 hours) are calibrated to its daily numbers, see calibrate().
+ */
 export function mergeGoogle(data, g) {
   if (!g || !g.hours || !g.hours.length) return data;
   const H = { ...data.h }, D = { ...data.d };
@@ -149,7 +164,7 @@ export function mergeGoogle(data, g) {
   const t0 = dayNumber(+H.t0.slice(0, 4), +H.t0.slice(5, 7), +H.t0.slice(8, 10));
   // never touch the hours that already happened: those stay Open-Meteo's analysis, an old Google forecast must not replace them
   const nowIdx = Math.round(dayNumber(+data.now.slice(0, 4), +data.now.slice(5, 7), +data.now.slice(8, 10)) - t0) * 24 + Number(data.now.slice(11, 13));
-  let replaced = 0;
+  const covered = new Set();
   for (const h of g.hours) {
     if (!h.s || h.t == null) continue;
     const when = new Date(h.s);
@@ -166,7 +181,7 @@ export function mergeGoogle(data, g) {
     if (h.u != null) H.uv[i] = h.u;
     // Open-Meteo stores rain and chance as "the hour that just ended" one slot later; keep that convention
     if (i + 1 < H.rain.length) { H.rain[i + 1] = h.r == null ? 0 : h.r; H.prob[i + 1] = h.p == null ? 0 : h.p; }
-    replaced++;
+    covered.add(i);
   }
   for (const d of g.days || []) {
     const i = D.time.indexOf(d.date);
@@ -178,42 +193,123 @@ export function mergeGoogle(data, g) {
     if (d.rise) D.rise[i] = localIso(d.rise);
     if (d.set) D.set[i] = localIso(d.set);
   }
-  return { ...data, h: H, d: D, src: 'google', gHours: replaced };
+  calibrate(data.h, H, D, g.days || [], t0, nowIdx, covered);
+  return { ...data, h: H, d: D, src: 'google', gHours: covered.size };
+}
+
+const dryCodeOf = (dayCode) => Math.min(dayCode == null ? 2 : dayCode, 3);
+
+/**
+ * The hours Google's hourly answer did not reach keep Open-Meteo's shape but are pulled to Google's daily verdict:
+ * temperatures stretched so the day's high and low are Google's; a day Google calls dry has no rain and no wet icons;
+ * a wet day gets Google's amount and chance, spread over its most likely hours. `om` is Open-Meteo's untouched hourly data.
+ */
+function calibrate(om, H, D, days, t0, nowIdx, covered) {
+  for (const d of days) {
+    const di = D.time.indexOf(d.date);
+    if (di < 0 || d.hi == null || d.lo == null) continue;
+    const i0 = Math.round(dayNumber(+d.date.slice(0, 4), +d.date.slice(5, 7), +d.date.slice(8, 10)) - t0) * 24;
+    const idx = [];
+    let coveredRain = 0, omHi = -99, omLo = 99;
+    for (let k = 0; k < 24; k++) {
+      const i = i0 + k;
+      if (i < 0 || i >= H.t.length) continue;
+      if (om.t[i] != null) { omHi = Math.max(omHi, om.t[i]); omLo = Math.min(omLo, om.t[i]); }
+      if (i < nowIdx) continue;
+      if (covered.has(i)) coveredRain += (i + 1 < H.rain.length ? H.rain[i + 1] || 0 : 0);
+      else idx.push(i);
+    }
+    if (!idx.length) continue;
+
+    // temperature: Open-Meteo's day range -> Google's high/low (a plain shift when the range is too flat to stretch)
+    const stretch = omHi - omLo >= 1.5 ? (d.hi - d.lo) / (omHi - omLo) : 1;
+    for (const i of idx) {
+      const t = om.t[i];
+      if (t == null) continue;
+      const nt = omHi - omLo >= 1.5 ? d.lo + (t - omLo) * stretch : t + ((d.hi + d.lo) / 2 - (omHi + omLo) / 2);
+      H.feels[i] = (om.feels[i] == null ? nt : om.feels[i] + (nt - t));
+      H.t[i] = nt;
+    }
+
+    // rain
+    const slot = (i) => i + 1; // Open-Meteo keeps rain and chance one slot later
+    const dry = d.pp < 25 && d.ps < 0.6;
+    if (dry) {
+      for (const i of idx) {
+        if (slot(i) < H.rain.length) { H.rain[slot(i)] = 0; H.prob[slot(i)] = Math.min(H.prob[slot(i)] || 0, d.pp); }
+        if (isWet(H.code[i])) H.code[i] = dryCodeOf(D.code[di]);
+      }
+      continue;
+    }
+    // the rain falls in one stretch: the run of hours where Open-Meteo itself sees the most rain and chance
+    const cand = idx.filter((i) => slot(i) < H.rain.length);
+    const want = Math.min(cand.length, Math.max(3, Math.min(8, Math.round(d.ps > 0 ? d.ps / 1.2 : 4))));
+    const score = (i) => (om.prob[slot(i)] || 0) + 20 * (om.rain[slot(i)] || 0);
+    let best = 0, bestSum = -1;
+    for (let k = 0; k + want <= cand.length; k++) {
+      let sum = 0;
+      for (let j = 0; j < want; j++) sum += score(cand[k + j]);
+      if (sum > bestSum) { bestSum = sum; best = k; }
+    }
+    const win = cand.slice(best, best + want);
+    const inWin = new Set(win);
+    const left = Math.max(0, d.ps - coveredRain);
+    const weights = win.map((i) => (om.rain[slot(i)] || 0) + 0.2), wsum = weights.reduce((a, b) => a + b, 0) || 1;
+    const wetCode = isWet(D.code[di]) ? D.code[di] : 80;
+    for (const i of idx) {
+      if (slot(i) >= H.rain.length) continue;
+      if (inWin.has(i)) {
+        const k = win.indexOf(i);
+        H.rain[slot(i)] = Math.round(left * weights[k] / wsum * 10) / 10;
+        H.prob[slot(i)] = Math.max(H.prob[slot(i)] || 0, d.pp);
+        if (!isWet(H.code[i])) H.code[i] = wetCode;
+      } else {
+        H.rain[slot(i)] = 0;
+        H.prob[slot(i)] = Math.min(H.prob[slot(i)] || 0, Math.max(10, Math.round(d.pp / 2)));
+        if (isWet(H.code[i])) H.code[i] = dryCodeOf(D.code[di]);
+      }
+    }
+  }
 }
 
 /**
  * Merges Google into the freshly fetched Open-Meteo `items` ({ [place.key]: data }), fetching only what is not cached.
- * `force` = the user asked for a refresh: answers older than GOOGLE_MIN_AGE are fetched again, otherwise GOOGLE_TTL.
- * Returns { ok, reason }: ok is false when no place could be updated (items stay as Open-Meteo gave them).
+ * `manual` = the user pressed refresh: answers older than GOOGLE_MIN_AGE are fetched again; every other refresh
+ * (start-up, coming back to the app, adding a place, the timer) only fetches what is older than GOOGLE_TTL or missing.
+ * Returns { ok, partial, reason, detail }: ok is false when no place could be updated (items stay Open-Meteo's).
  */
-export async function applyGoogle(items, places, key, force) {
+export async function applyGoogle(items, places, key, manual) {
   const cache = loadGoogleCache() || {};
-  const maxAge = force ? GOOGLE_MIN_AGE : GOOGLE_TTL;
-  let failure = null, good = 0;
+  const maxAge = manual ? GOOGLE_MIN_AGE : GOOGLE_TTL;
+  let failure = null, detail = '', good = 0;
   const one = async (p) => {
     const data = items[p.key];
     if (!data) return;
     let g = cache[p.key];
     const moved = g && (Math.abs(g.lat - p.lat) > 0.001 || Math.abs(g.lon - p.lon) > 0.001);
     if (!g || moved || Date.now() - g.ts > maxAge) {
-      try {
-        const hoursNeeded = Math.max(24, FORECAST_DAYS * 24 - Number(data.now.slice(11, 13)));
-        g = { ...(await fetchPlace(p, key, hoursNeeded)), lat: p.lat, lon: p.lon };
-        cache[p.key] = g;
-      } catch (e) {
-        failure = failure || e.reason || 'other';
-        if (!g || moved) return; // nothing usable to fall back on: this place stays on Open-Meteo
+      if (failure && STOPS.includes(failure)) { if (!g || moved) return; } // the next call would fail the same way
+      else {
+        try {
+          g = { ...(await fetchPlace(p, key, GOOGLE_HOURS)), lat: p.lat, lon: p.lon };
+          cache[p.key] = g;
+        } catch (e) {
+          failure = failure || e.reason || 'other';
+          detail = detail || e.detail || '';
+          if (!g || moved) return; // nothing usable to fall back on: this place stays on Open-Meteo
+        }
       }
     }
     items[p.key] = mergeGoogle(data, g);
     good++;
   };
-  // The first place goes alone: a wrong key or an exhausted quota would fail all of them, so don't spend calls on the rest.
-  const [first, ...rest] = places;
-  await one(first);
-  if (!failure || !['key', 'denied', 'quota'].includes(failure)) await Promise.all(rest.map(one));
+  // One place at a time up to two: a wrong key or an exhausted quota stops the rest after the first failure, and the
+  // per-minute limit is never hit by a burst.
+  const queue = places.slice();
+  const worker = async () => { while (queue.length) await one(queue.shift()); };
+  await Promise.all([worker(), worker()]);
   const live = new Set(places.map((p) => p.key));
   for (const k of Object.keys(cache)) if (!live.has(k)) delete cache[k];
   saveGoogleCache(cache);
-  return { ok: good > 0 && !failure, partial: good > 0 && !!failure, reason: failure };
+  return { ok: good > 0 && !failure, partial: good > 0 && !!failure, reason: failure, detail };
 }

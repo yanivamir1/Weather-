@@ -1,7 +1,7 @@
 // Settings: text size, row spacing, units, how far back to look and the about line (version + data attribution).
 import { esc, icon, openSheet } from './dom.js';
 import { APP_VERSION } from './version.js';
-import { GOOGLE_FREE_CALLS, REASON_TEXT } from './google.js';
+import { GOOGLE_CALLS_PER_PLACE, GOOGLE_FREE_CALLS, REASON_TEXT } from './google.js';
 
 const seg = (key, cur, opts) => `<div class="gp-seg" role="group">${opts.map(([v, l]) => `<button class="gp-chip${String(cur) === String(v) ? ' on' : ''}" data-set="${key}" data-v="${v}" aria-pressed="${String(cur) === String(v)}"><span dir="ltr">${esc(l)}</span></button>`).join('')}</div>`;
 
@@ -10,11 +10,12 @@ const GOOGLE_KEY_URL = 'https://developers.google.com/maps/documentation/weather
 function googleBlock(info) {
   const status = !info.key ? 'אין מפתח. עד שיוזן מפתח מוצגת תחזית Open-Meteo.'
     : info.reason ? `Google: ${REASON_TEXT[info.reason] || REASON_TEXT.other}` : 'המפתח שמור. התחזית שמוצגת היא של Google.';
+  const why = info.reason && info.detail ? `<div class="gs-note" dir="ltr" style="text-align:left">${esc(info.detail)}</div>` : '';
   return `<div class="gs-g">
       <label class="sl" for="gkey">מפתח Google Weather API</label>
       <div class="gp-keyrow"><input id="gkey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="הדבק כאן את המפתח" value="${esc(info.key)}"><button class="gp-chip on" data-gsave>שמירה ובדיקה</button></div>
-      <div class="gs-gstat" id="gstat" role="status">${esc(status)}</div>
-      <div class="gs-note">קריאות החודש: <span class="num">${info.usage}</span> (במפתח רגיל <span class="num">${GOOGLE_FREE_CALLS.toLocaleString('en')}</span> בחודש בחינם; רענון מלא של מקום אחד עולה עד 8 קריאות, והתשובות נשמרות 3 שעות).<br>
+      <div class="gs-gstat" id="gstat" role="status">${esc(status)}</div>${why}
+      <div class="gs-note">קריאות היום: <span class="num">${info.usage.today}</span> · החודש: <span class="num">${info.usage.month}</span> (במפתח רגיל <span class="num">${GOOGLE_FREE_CALLS.toLocaleString('en')}</span> בחודש בחינם). רענון מלא של מקום אחד עולה <span class="num">${GOOGLE_CALLS_PER_PLACE}</span> קריאות, והתשובות נשמרות 6 שעות. השעות שאחרי 48 השעות הקרובות מאוזנות לפי התחזית היומית של Google.<br>
       איך מקבלים מפתח בחינם: <a href="${GOOGLE_KEY_URL}" target="_blank" rel="noopener">דף ה-Maps Demo Key של Google</a>, נכנסים עם חשבון Gmail אישי, לוחצים Get a Demo Key ומעתיקים לכאן. אין צורך בכרטיס אשראי, אבל יש מכסה יומית מוגבלת. ההגבלה של המפתח צריכה להיות ל-Weather API בלבד, בלי הגבלה לאפליקציית אנדרואיד.</div>
     </div>`;
 }

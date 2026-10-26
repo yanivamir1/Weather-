@@ -27,9 +27,9 @@ Editing `www/` needs no Android SDK. For a quick look in a browser, serve `www/`
 
 Weather: [Open-Meteo](https://open-meteo.com/) (free, no key, CC BY 4.0). Optionally the forecast of every place can come
 from the [Google Weather API](https://developers.google.com/maps/documentation/weather) (Settings → מקור התחזית): the user pastes
-their own key on the phone (a free Maps Demo Key or a regular key), `www/js/google.js` fetches hours and days, converts the
-conditions to WMO codes and merges them over the future part of the Open-Meteo data, which stays the base for the past.
-Answers are cached 3 hours and calls are counted per month. The key is stored in `localStorage` only, never in the repo. Place search: the bundled Israeli gazetteer
+their own key on the phone (a free Maps Demo Key or a regular key), `www/js/google.js` fetches the next 48 hours and the 7 days (3 calls per place), converts the
+conditions to WMO codes and merges them over the future part of the Open-Meteo data, which stays the base for the past; the hours
+after the 48 are calibrated to Google's daily numbers. Answers are cached 6 hours and calls are counted per day and month. The key is stored in `localStorage` only, never in the repo. Place search: the bundled Israeli gazetteer
 (`www/data/il-places.json`, ~1,300 localities and sites, searched offline by Hebrew or English name, see `www/js/gazetteer.js`)
 first, then Open-Meteo geocoding for the rest of the world. Open-Meteo only knows many small localities by an English name
 (e.g. משמר העמק), so a Hebrew search against it alone misses them. The gazetteer is the Central Bureau of Statistics

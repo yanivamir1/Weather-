@@ -73,7 +73,8 @@ function resetToNow() {
   state.hourFromData = !!ref;
 }
 
-async function refresh(force) {
+/** force = fetch Open-Meteo even if it is fresh. manual = the user pressed refresh: only then may Google answers younger than 6 hours be refetched. */
+async function refresh(force, manual = false) {
   const ps = places();
   if (!ps.length) { render(); return; }
   const fresh = Date.now() - state.fetchedAt < CACHE_TTL && ps.every((p) => state.data[p.key]);
@@ -86,8 +87,8 @@ async function refresh(force) {
       const items = await fetchForecasts(ps, state.settings.pastDays);
       // Google's forecast replaces Open-Meteo's for the hours still ahead; any failure leaves Open-Meteo in place
       const gkey = state.settings.source === 'google' ? loadGoogleKey() : '';
-      state.google = gkey ? await applyGoogle(items, ps, gkey, force) : null;
-      if (state.google && state.google.reason && force) toast('Google: ' + (REASON_TEXT[state.google.reason] || REASON_TEXT.other) + '. מוצגת תחזית Open-Meteo.');
+      state.google = gkey ? await applyGoogle(items, ps, gkey, manual) : null;
+      if (state.google && state.google.reason && manual) toast('Google: ' + (REASON_TEXT[state.google.reason] || REASON_TEXT.other) + '. מוצגת תחזית Open-Meteo.');
       state.data = items;
       state.fetchedAt = Date.now();
       state.failed = false;
@@ -311,7 +312,7 @@ function openAdd() {
 
 function showSettings() {
   openSettings(state.settings, {
-    googleInfo: () => ({ key: loadGoogleKey(), usage: googleUsage(), reason: state.google && state.google.reason }),
+    googleInfo: () => ({ key: loadGoogleKey(), usage: googleUsage(), reason: state.google && state.google.reason, detail: state.google && state.google.detail }),
     onKey: async (raw) => {
       const k = raw.trim();
       if (!k) { saveGoogleKey(''); saveGoogleCache({}); state.google = null; state.fetchedAt = 0; render(); return { ok: true, cleared: true }; }
@@ -346,7 +347,7 @@ document.addEventListener('click', (e) => {
       break;
     case 'focus': state.focusKey = t.dataset.key; render(); break;
     case 'open': openDetail(t.dataset.key); break;
-    case 'refresh': refresh(true); break;
+    case 'refresh': refresh(true, true); break;
     case 'settings': showSettings(); break;
     case 'add': openAdd(); break;
     case 'gps': enableGps(); break;
@@ -396,7 +397,7 @@ initDrag({
   list.addEventListener('touchend', () => {
     const ptr = $('#ptr');
     if (ptr) ptr.classList.remove('on');
-    if (armed) refresh(true);
+    if (armed) refresh(true, true);
     y0 = null; armed = false;
   });
 })();
